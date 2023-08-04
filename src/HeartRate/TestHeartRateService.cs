@@ -31,7 +31,7 @@ internal class TestHeartRateService : IHeartRateService
         _tickrate = tickrate;
     }
 
-    public void InitiateDefault()
+    public void InitiateDefault(string bluetoothDeviceId)
     {
         _timer = new Timer(Timer_Tick, null, _tickrate, _tickrate);
     }

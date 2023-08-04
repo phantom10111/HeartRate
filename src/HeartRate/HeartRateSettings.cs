@@ -45,6 +45,7 @@ public class HeartRateSettings
     public string IBIFile;
     public string HeartRateFile;
     public ConnectionInfo UDP;
+    public string BluetoothDeviceId;
 
     public HeartRateSettings(string filename)
     {
@@ -80,7 +81,8 @@ public class HeartRateSettings
             LogFile = " ", // Initialize to " " instead of null so the entry is still written.
             IBIFile = " ",
             HeartRateFile = " ",
-            UDP = default
+            UDP = default,
+            BluetoothDeviceId = ""
         };
     }
 
@@ -124,6 +126,7 @@ public class HeartRateSettings
         IBIFile = protocol.IBIFile;
         HeartRateFile = protocol.HeartRateFile;
         UDP = ConnectionInfo.Parse(protocol.UDP);
+        BluetoothDeviceId = protocol.BluetoothDeviceId;
 
         // A hack fix from a bug that's been fixed.
         if (UITextAlignment == 0) UITextAlignment = ContentAlignment.MiddleCenter;
@@ -174,6 +177,7 @@ public class HeartRateSettings
             IBIFile = IBIFile,
             HeartRateFile = HeartRateFile,
             UDP = UDP,
+            BluetoothDeviceId = BluetoothDeviceId,
         };
     }
 
@@ -283,6 +287,7 @@ public class HeartRateSettingsProtocol
     public string IBIFile { get; set; }
     public string HeartRateFile { get; set; }
     public string UDP { get; set; }
+    public string BluetoothDeviceId { get; set; }
     // ReSharper restore AutoPropertyCanBeMadeGetOnly.Global
 
     // Required by deserializer.
@@ -318,6 +323,7 @@ public class HeartRateSettingsProtocol
         IBIFile = settings.IBIFile ?? " ";
         HeartRateFile = settings.HeartRateFile ?? " ";
         UDP = settings.UDP.ToString() ?? " ";
+        BluetoothDeviceId = settings.BluetoothDeviceId ?? "";
     }
 
     private static string ColorToString(Color color)

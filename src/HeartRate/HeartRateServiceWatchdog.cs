@@ -8,16 +8,19 @@ internal class HeartRateServiceWatchdog : IDisposable
 {
     private readonly TimeSpan _timeout;
     private readonly IHeartRateService _service;
+    private readonly string _bluetoothDeviceId;
     private readonly Stopwatch _lastUpdateTimer = Stopwatch.StartNew();
     private readonly object _sync = new();
     private bool _isDisposed = false;
 
     public HeartRateServiceWatchdog(
         TimeSpan timeout,
-        IHeartRateService service)
+        IHeartRateService service,
+        string bluetoothDeviceId)
     {
         _timeout = timeout;
         _service = service ?? throw new ArgumentNullException(nameof(service));
+        _bluetoothDeviceId = bluetoothDeviceId;
         _service.HeartRateUpdated += Service_HeartRateUpdated;
 
         var thread = new Thread(WatchdogThread)
@@ -60,7 +63,7 @@ internal class HeartRateServiceWatchdog : IDisposable
                 DebugLog.WriteLog("Restarting services...");
                 try
                 {
-                    _service.InitiateDefault();
+                    _service.InitiateDefault(_bluetoothDeviceId);
                     _lastUpdateTimer.Restart();
                 }
                 catch (Exception e)

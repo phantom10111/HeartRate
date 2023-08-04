@@ -41,7 +41,7 @@ internal interface IHeartRateService : IDisposable
     bool IsDisposed { get; }
 
     event HeartRateService.HeartRateUpdateEventHandler HeartRateUpdated;
-    void InitiateDefault();
+    void InitiateDefault(string BluetoothDeviceId);
     void Cleanup();
 }
 
@@ -62,13 +62,13 @@ internal class HeartRateService : IHeartRateService
     public event HeartRateUpdateEventHandler HeartRateUpdated;
     public delegate void HeartRateUpdateEventHandler(HeartRateReading reading);
 
-    public void InitiateDefault()
+    public void InitiateDefault(string bluetoothDeviceId)
     {
         while (true)
         {
             try
             {
-                InitiateDefaultCore();
+                InitiateDefaultCore(bluetoothDeviceId);
                 return; // success.
             }
             catch (Exception e)
@@ -86,7 +86,7 @@ internal class HeartRateService : IHeartRateService
         }
     }
 
-    private void InitiateDefaultCore()
+    private void InitiateDefaultCore(string bluetoothDeviceId)
     {
         var heartrateSelector = GattDeviceService
             .GetDeviceSelectorFromUuid(GattServiceUuids.HeartRate);
@@ -95,19 +95,24 @@ internal class HeartRateService : IHeartRateService
             .FindAllAsync(heartrateSelector)
             .AsyncResult();
 
-        var device = devices.FirstOrDefault();
+        foreach (var device in devices)
+        {
+            var properties = string.Join(",", device.Properties.Select(t => $"{t.Key}: {t.Value}"));
+            _log.Write($"Found suitable device: [Name: {device.Name}, Id: {device.Id}, IsEnabled: {device.IsEnabled}, properties: {properties}]");
+        }
 
-        if (device == null)
+        var foundDevices = bluetoothDeviceId == null || bluetoothDeviceId == "" ? devices : devices.Where(device => device.Id == bluetoothDeviceId);
+        var foundDevice = foundDevices.FirstOrDefault();
+
+        if (foundDevice == null)
         {
             _log.Write("Unable to locate a device.");
             throw new ArgumentNullException(
-                nameof(device),
+                nameof(foundDevice),
                 "Unable to locate heart rate device. Ensure it's connected and paired.");
         }
 
-        var properties = string.Join(",", device.Properties.Select(t => $"{t.Key}: {t.Value}"));
-
-        _log.Write($"Found device: [Name: {device.Name}, Id: {device.Id}, IsEnabled: {device.IsEnabled}, properties: {properties}]");
+        _log.Write($"Using device: [Name: {foundDevice.Name}, Id: {foundDevice.Id}]");
 
         GattDeviceService service;
 
@@ -120,7 +125,7 @@ internal class HeartRateService : IHeartRateService
 
             Cleanup();
 
-            service = GattDeviceService.FromIdAsync(device.Id)
+            service = GattDeviceService.FromIdAsync(foundDevice.Id)
                 .AsyncResult();
 
             _service = service;
@@ -130,7 +135,7 @@ internal class HeartRateService : IHeartRateService
         {
             _log.Write("service null");
             throw new ArgumentOutOfRangeException(
-                $"Unable to get service to {device.Name} ({device.Id}). Is the device inuse by another program? The Bluetooth adaptor may need to be turned off and on again.");
+                $"Unable to get service to {foundDevice.Name} ({foundDevice.Id}). Is the device inuse by another program? The Bluetooth adaptor may need to be turned off and on again.");
         }
 
         var heartrate = service
@@ -140,7 +145,7 @@ internal class HeartRateService : IHeartRateService
         if (heartrate == null)
         {
             throw new ArgumentOutOfRangeException(
-                $"Unable to locate heart rate measurement on device {device.Name} ({device.Id}).");
+                $"Unable to locate heart rate measurement on device {foundDevice.Name} ({foundDevice.Id}).");
         }
 
         _log.Write($"Service [CharacteristicProperties: {heartrate.CharacteristicProperties}, UserDescription: {heartrate.UserDescription}]");
