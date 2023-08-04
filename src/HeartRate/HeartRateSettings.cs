@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 
@@ -185,10 +186,7 @@ public class HeartRateSettings
 
     private static string GetSettingsDirectory()
     {
-        var dataPath = Environment.ExpandEnvironmentVariables("%appdata%");
-        if (string.IsNullOrEmpty(dataPath)) return null;
-
-        return Path.Combine(dataPath, "HeartRate");
+        return Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "runtime");
     }
 
     public static string GetSettingsFile(string filename)
