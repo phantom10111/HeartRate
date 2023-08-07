@@ -195,10 +195,7 @@ internal class HeartRateService : IHeartRateService
                 return;
             }
 
-            var reading = readingValue.Value;
-            DebugLog.WriteLog($"Read {reading.Flags:X} {reading.Status} {reading.BeatsPerMinute}");
-
-            HeartRateUpdated?.Invoke(reading);
+            HeartRateUpdated?.Invoke(readingValue.Value);
         }
         finally
         {
