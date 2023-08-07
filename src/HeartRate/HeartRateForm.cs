@@ -73,7 +73,7 @@ public partial class HeartRateForm : Form
             _iconBitmap = new Bitmap(_iconWidth, _iconHeight);
             _iconGraphics = Graphics.FromImage(_iconBitmap);
             _measurementFont = new Font(_settings.FontName, _iconWidth, GraphicsUnit.Pixel);
-            _watchdog = new HeartRateServiceWatchdog(TimeSpan.FromSeconds(10), _service, _settings.BluetoothDeviceId);
+            _watchdog = new HeartRateServiceWatchdog(TimeSpan.FromSeconds(10), _service, _settings.BluetoothAddress);
 
             InitializeComponent();
 
@@ -114,7 +114,7 @@ public partial class HeartRateForm : Form
 
         _service.HeartRateUpdated += Service_HeartRateUpdated;
 
-        Task.Factory.StartNew(() => _service.InitiateDefault(_settings.BluetoothDeviceId));
+        Task.Factory.StartNew(() => _service.InitiateDefault(_settings.BluetoothAddress));
 
         UpdateUI();
     }

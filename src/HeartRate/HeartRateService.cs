@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
 using Windows.Storage.Streams;
@@ -41,7 +42,7 @@ internal interface IHeartRateService : IDisposable
     bool IsDisposed { get; }
 
     event HeartRateService.HeartRateUpdateEventHandler HeartRateUpdated;
-    void InitiateDefault(string BluetoothDeviceId);
+    void InitiateDefault(ulong? BluetoothAddress);
     void Cleanup();
 }
 
@@ -62,13 +63,13 @@ internal class HeartRateService : IHeartRateService
     public event HeartRateUpdateEventHandler HeartRateUpdated;
     public delegate void HeartRateUpdateEventHandler(HeartRateReading reading);
 
-    public void InitiateDefault(string bluetoothDeviceId)
+    public void InitiateDefault(ulong? bluetoothAddress)
     {
         while (true)
         {
             try
             {
-                InitiateDefaultCore(bluetoothDeviceId);
+                InitiateDefaultCore(bluetoothAddress);
                 return; // success.
             }
             catch (Exception e)
@@ -86,35 +87,47 @@ internal class HeartRateService : IHeartRateService
         }
     }
 
-    private void InitiateDefaultCore(string bluetoothDeviceId)
+    private void InitiateDefaultCore(ulong? bluetoothAddress)
     {
-        var heartrateSelector = GattDeviceService
-            .GetDeviceSelectorFromUuid(GattServiceUuids.HeartRate);
+        var deviceSelector = bluetoothAddress == null
+            ? GattDeviceService.GetDeviceSelectorFromUuid(GattServiceUuids.HeartRate)
+            : BluetoothLEDevice.GetDeviceSelectorFromBluetoothAddress(bluetoothAddress.Value);
 
         var devices = DeviceInformation
-            .FindAllAsync(heartrateSelector)
+            .FindAllAsync(deviceSelector)
             .AsyncResult();
 
-        foreach (var device in devices)
+        if (bluetoothAddress == null)
         {
-            var properties = string.Join(",", device.Properties.Select(t => $"{t.Key}: {t.Value}"));
-            _log.Write($"Found suitable device: [Name: {device.Name}, Id: {device.Id}, IsEnabled: {device.IsEnabled}, properties: {properties}]");
+            // Scan for all devices, together with their addresses so that the user can add it to settings.xml later
+            foreach (var device in devices)
+            {
+                var bluetoothDevice = BluetoothLEDevice.FromIdAsync(device.Id).AsyncResult();
+
+                var properties = string.Join(",", device.Properties.Select(t => $"{t.Key}: {t.Value}"));
+                _log.Write($"Found suitable device: [Name: {device.Name}, Address: {bluetoothDevice.BluetoothAddress}, Id: {device.Id}, IsEnabled: {device.IsEnabled}, properties: {properties}]");
+            }
         }
 
-        var foundDevices = bluetoothDeviceId == null || bluetoothDeviceId == "" ? devices : devices.Where(device => device.Id == bluetoothDeviceId);
-        var foundDevice = foundDevices.FirstOrDefault();
+        var foundDevice = devices.FirstOrDefault();
 
         if (foundDevice == null)
         {
             _log.Write("Unable to locate a device.");
+
+            if(bluetoothAddress != null)
+            {
+                _log.Write($"There's a device with address {bluetoothAddress.Value} specified in settings, but this device can't be found.");
+                _log.Write("Remove it from settings to try again and try to find another device.");
+            }
+
             throw new ArgumentNullException(
                 nameof(foundDevice),
                 "Unable to locate heart rate device. Ensure it's connected and paired.");
         }
 
-        _log.Write($"Using device: [Name: {foundDevice.Name}, Id: {foundDevice.Id}]");
-
-        GattDeviceService service;
+        var foundDeviceProperties = string.Join(",", foundDevice.Properties.Select(t => $"{t.Key}: {t.Value}"));
+        _log.Write($"Trying to connect to device: [Name: {foundDevice.Name}, Id: {foundDevice.Id}, IsEnabled: {foundDevice.IsEnabled}, properties: {foundDeviceProperties}]");
 
         lock (_disposeSync)
         {
@@ -125,21 +138,49 @@ internal class HeartRateService : IHeartRateService
 
             Cleanup();
 
-            service = GattDeviceService.FromIdAsync(foundDevice.Id)
-                .AsyncResult();
+            GattDeviceService service;
+            if (bluetoothAddress == null)
+            {
+                service = GattDeviceService
+                    .FromIdAsync(foundDevice.Id)
+                    .AsyncResult();
+            }
+            else
+            {
+                var bluetoothDevice = BluetoothLEDevice
+                    .FromBluetoothAddressAsync(bluetoothAddress.Value)
+                    .AsyncResult();
 
-            _service = service;
+                if (bluetoothDevice == null)
+                {
+                    _log.Write("device null");
+                    throw new ArgumentOutOfRangeException(
+                        $"Unable to connect to device {foundDevice.Name} ({foundDevice.Id}). Is the device in use by another program? The Bluetooth adaptor may need to be turned off and on again.");
+                }
+
+                service = bluetoothDevice
+                    .GetGattServicesForUuidAsync(GattServiceUuids.HeartRate)
+                    .AsyncResult()
+                    .Services
+                    .FirstOrDefault();
+            }
+
+            Volatile.Write(ref _service, service);
         }
 
-        if (service == null)
+        if (_service == null)
         {
             _log.Write("service null");
             throw new ArgumentOutOfRangeException(
-                $"Unable to get service to {foundDevice.Name} ({foundDevice.Id}). Is the device inuse by another program? The Bluetooth adaptor may need to be turned off and on again.");
+                $"Unable to get service to {foundDevice.Name} ({foundDevice.Id}). Is the device in use by another program? The Bluetooth adaptor may need to be turned off and on again.");
         }
 
-        var heartrate = service
-            .GetCharacteristics(_heartRateMeasurementCharacteristicUuid)
+        _log.Write($"Connected to device: [Name: {foundDevice.Name}, Address: {_service.Device.BluetoothAddress}]");
+
+        var heartrate = _service
+            .GetCharacteristicsForUuidAsync(_heartRateMeasurementCharacteristicUuid)
+            .AsyncResult()
+            .Characteristics
             .FirstOrDefault();
 
         if (heartrate == null)
