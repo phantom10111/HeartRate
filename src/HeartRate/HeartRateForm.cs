@@ -114,7 +114,17 @@ public partial class HeartRateForm : Form
 
         _service.HeartRateUpdated += Service_HeartRateUpdated;
 
-        Task.Factory.StartNew(() => _service.InitiateDefault(_settings.BluetoothAddress));
+        Task.Factory.StartNew(() =>
+        {
+            try
+            {
+                _service.InitiateDefault(_settings.BluetoothAddress);
+            }
+            finally
+            {
+                _watchdog.Start();
+            }
+        });
 
         UpdateUI();
     }

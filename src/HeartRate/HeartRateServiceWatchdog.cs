@@ -22,14 +22,6 @@ internal class HeartRateServiceWatchdog : IDisposable
         _service = service ?? throw new ArgumentNullException(nameof(service));
         _bluetoothAddress = bluetoothAddress;
         _service.HeartRateUpdated += Service_HeartRateUpdated;
-
-        var thread = new Thread(WatchdogThread)
-        {
-            Name = GetType().Name,
-            IsBackground = true
-        };
-
-        thread.Start();
     }
 
     private void Service_HeartRateUpdated(HeartRateReading reading)
@@ -76,6 +68,26 @@ internal class HeartRateServiceWatchdog : IDisposable
         }
 
         DebugLog.WriteLog("Watchdog thread exiting.");
+    }
+
+    public void Start()
+    {
+        lock (_sync)
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _lastUpdateTimer.Restart();
+            var thread = new Thread(WatchdogThread)
+            {
+                Name = GetType().Name,
+                IsBackground = true
+            };
+
+            thread.Start();
+        }
     }
 
     public void Dispose()

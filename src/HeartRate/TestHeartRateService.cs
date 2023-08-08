@@ -48,11 +48,6 @@ internal class TestHeartRateService : IHeartRateService
         HeartRateUpdated?.Invoke(HeartRates[count]);
     }
 
-    public void Cleanup()
-    {
-        Dispose();
-    }
-
     public void Dispose()
     {
         IsDisposed = true;
