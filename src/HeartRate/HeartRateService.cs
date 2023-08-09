@@ -32,7 +32,7 @@ internal struct HeartRateReading
     public ContactSensorStatus Status { get; set; }
     public int BeatsPerMinute { get; set; }
     public int? EnergyExpended { get; set; }
-    public int[] RRIntervals { get; set; }
+    public int[]? RRIntervals { get; set; }
     public bool IsError { get; set; }
     public string Error { get; set; }
 }
@@ -54,13 +54,13 @@ internal class HeartRateService : IHeartRateService
 
     public bool IsDisposed { get; private set; }
 
-    private BluetoothLEDevice _device;
-    private GattDeviceService _service;
-    private byte[] _buffer;
+    private BluetoothLEDevice? _device;
+    private GattDeviceService? _service;
+    private byte[]? _buffer;
     private readonly object _disposeSync = new();
     private readonly DebugLog _log = new(nameof(HeartRateService));
 
-    public event HeartRateUpdateEventHandler HeartRateUpdated;
+    public event HeartRateUpdateEventHandler? HeartRateUpdated;
     public delegate void HeartRateUpdateEventHandler(HeartRateReading reading);
 
     public void InitiateDefault(ulong? bluetoothAddress)
@@ -132,8 +132,8 @@ internal class HeartRateService : IHeartRateService
                 throw new ObjectDisposedException(GetType().Name);
             }
 
-            BluetoothLEDevice bluetoothDevice = null;
-            GattDeviceService service;
+            BluetoothLEDevice? bluetoothDevice = null;
+            GattDeviceService? service;
             if (bluetoothAddress == null)
             {
                 service = GattDeviceService
@@ -221,7 +221,7 @@ internal class HeartRateService : IHeartRateService
         var byteBuffer = Interlocked.Exchange(ref _buffer, null)
             ?? new byte[buffer.Length];
 
-        if (byteBuffer.Length != buffer.Length)
+        if (byteBuffer.Length < buffer.Length)
         {
             byteBuffer = new byte[buffer.Length];
         }
@@ -288,13 +288,13 @@ internal class HeartRateService : IHeartRateService
         return reading;
     }
 
-    private void ReplaceDevice(BluetoothLEDevice newDevice)
+    private void ReplaceDevice(BluetoothLEDevice? newDevice)
     {
         var oldDevice = Interlocked.Exchange(ref _device, newDevice);
         oldDevice?.TryDispose();
     }
 
-    private void ReplaceService(GattDeviceService newService)
+    private void ReplaceService(GattDeviceService? newService)
     {
         var oldService = Interlocked.Exchange(ref _service, newService);
         oldService?.TryDispose();

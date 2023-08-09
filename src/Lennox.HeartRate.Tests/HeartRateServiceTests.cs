@@ -11,8 +11,8 @@ public class HeartRateServiceTests
         return HeartRateService.ReadBuffer(buf, buf.Length);
     }
 
-    private static int GetBpm(params byte[] buf) => GetReading(buf).Value.BeatsPerMinute;
-    private static int[] GetRR(params byte[] buf) => GetReading(buf).Value.RRIntervals;
+    private static int GetBpm(params byte[] buf) => GetReading(buf)?.BeatsPerMinute ?? -1;
+    private static int[]? GetRR(params byte[] buf) => GetReading(buf)?.RRIntervals;
 
     [TestMethod]
     public void ReturnsNullWhenTooShort()
@@ -43,10 +43,10 @@ public class HeartRateServiceTests
     [TestMethod]
     public void EverythingWorksTogether()
     {
-        var reading = GetReading(0b11001, 0x01, 0x02, 0x22, 0x33, 0x03, 0x04, 0x05, 0x06).Value;
+        var reading = GetReading(0b11001, 0x01, 0x02, 0x22, 0x33, 0x03, 0x04, 0x05, 0x06);
 
-        Assert.AreEqual(0x0201, reading.BeatsPerMinute);
-        Assert.AreEqual(0x3322, reading.EnergyExpended);
-        CollectionAssert.AreEqual(new[] { 0x0403, 0x0605 }, reading.RRIntervals);
+        Assert.AreEqual(0x0201, reading?.BeatsPerMinute);
+        Assert.AreEqual(0x3322, reading?.EnergyExpended);
+        CollectionAssert.AreEqual(new[] { 0x0403, 0x0605 }, reading?.RRIntervals);
     }
 }

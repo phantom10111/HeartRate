@@ -51,7 +51,7 @@ internal static class Extensions
 
     public static string Truncate(this string s, int length)
     {
-        if (s == null || s.Length < length) return s;
+        if (s.Length < length) return s;
 
         return s.Substring(0, length);
     }

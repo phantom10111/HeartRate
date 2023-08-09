@@ -6,9 +6,9 @@ namespace Lennox.HeartRate.Tests;
 
 internal sealed class TempFile : IDisposable
 {
-    public string Filename => Volatile.Read(ref _filename);
+    public string Filename => Volatile.Read(ref _filename) ?? throw new InvalidOperationException("TempFile already deleted");
 
-    private string _filename = Path.GetTempFileName();
+    private string? _filename = Path.GetTempFileName();
 
     public static implicit operator string(TempFile f)
     {

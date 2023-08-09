@@ -43,7 +43,7 @@ internal static class DateTimeFormatter
     }
 
     public static string Format(
-        string formatter,
+        string? formatter,
         DateTime datetime,
         string defaultFormat)
     {

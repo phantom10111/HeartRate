@@ -26,15 +26,14 @@ internal static class Prompt
         int currentSize,
         out Font font)
     {
-        font = default;
+        font = new(currentFont, currentSize, currentStyle, GraphicsUnit.Point);
 
         // Even though it's not really in "points," this prevents it from converting our PX size to Points, and
         // any conversion roundings that would happen.
-        using var dlgFont = new Font(currentFont, currentSize, currentStyle, GraphicsUnit.Point);
         using var dlg = new FontDialog
         {
             FontMustExist = true,
-            Font = dlgFont
+            Font = font
         };
 
         if (dlg.ShowDialog() != DialogResult.OK) return false;
@@ -45,7 +44,7 @@ internal static class Prompt
 
     public static bool TryFile(string current, string filter, out string file)
     {
-        file = default;
+        file = "";
 
         using var dlg = new OpenFileDialog
         {
@@ -62,7 +61,7 @@ internal static class Prompt
 
     public static bool TrySaveFile(string current, string filter, out string file)
     {
-        file = default;
+        file = "";
 
         using var dlg = new SaveFileDialog
         {

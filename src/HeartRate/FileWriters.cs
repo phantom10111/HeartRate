@@ -16,18 +16,18 @@ internal abstract class FileWriter : IReadingListener
 {
     protected bool HasFileWriter => _filename != null;
 
-    private readonly string _filename;
+    private readonly string? _filename;
 
     public abstract void Reading(HeartRateReading reading);
 
-    protected FileWriter(string filename)
+    protected FileWriter(string? filename)
     {
         _filename = filename;
     }
 
     protected void AppendLine(string s)
     {
-        if (_filename == null) return;
+        if (!HasFileWriter) return;
 
         using var fs = SharedOpen(FileMode.Append);
         var bytes = Encoding.UTF8.GetBytes(s + "\r\n");
@@ -37,7 +37,7 @@ internal abstract class FileWriter : IReadingListener
 
     protected void Write(string s)
     {
-        if (_filename == null) return;
+        if (!HasFileWriter) return;
 
         using var fs = SharedOpen(FileMode.Create);
         var bytes = Encoding.UTF8.GetBytes(s);
@@ -47,13 +47,17 @@ internal abstract class FileWriter : IReadingListener
 
     protected FileStream SharedOpen(FileMode mode)
     {
+        if (_filename == null) throw new ArgumentNullException(
+                nameof(_filename),
+                "Can't open for writing without a valid filename");
+
         return File.Open(_filename, mode, FileAccess.Write, FileShare.ReadWrite);
     }
 }
 
 internal sealed class IBIFile : FileWriter
 {
-    public IBIFile(string filename) : base(filename)
+    public IBIFile(string? filename) : base(filename)
     {
     }
 
@@ -80,9 +84,9 @@ internal sealed class IBIFile : FileWriter
 internal sealed class LogFile : FileWriter
 {
     private readonly HeartRateSettings _settings;
-    [ThreadStatic] private static StringBuilder _stringBuilder;
+    [ThreadStatic] private static StringBuilder? _stringBuilder;
 
-    public LogFile(HeartRateSettings settings, string filename)
+    public LogFile(HeartRateSettings settings, string? filename)
         : base(filename)
     {
         _settings = settings;
@@ -97,7 +101,7 @@ internal sealed class LogFile : FileWriter
         AppendLine(csv);
     }
 
-    public static string GetCsv(HeartRateSettings settings, HeartRateReading reading)
+    public static string? GetCsv(HeartRateSettings settings, HeartRateReading reading)
     {
         if (reading.IsError) return null;
 
@@ -137,7 +141,7 @@ internal sealed class LogFile : FileWriter
 
     private static void AppendCsvValue<T>(StringBuilder sb, T value, bool alwaysQuote, bool appendComma)
     {
-        var stringed = value.ToString();
+        var stringed = value?.ToString() ?? "";
         var needsQuotes = alwaysQuote || stringed.Any(t => t is ',' or '\n');
         if (!needsQuotes)
         {
@@ -159,7 +163,7 @@ internal sealed class LogFile : FileWriter
 
 internal sealed class HeartRateFile : FileWriter
 {
-    public HeartRateFile(string filename) : base(filename) { }
+    public HeartRateFile(string? filename) : base(filename) { }
 
     public override void Reading(HeartRateReading reading)
     {
@@ -173,15 +177,15 @@ internal sealed class UdpWriter : IReadingListener, IDisposable
 {
     private readonly HeartRateSettings _settings;
     private readonly UdpClient? _client;
-    [ThreadStatic] private static byte[] _buffer;
+    [ThreadStatic] private static byte[]? _buffer;
 
     public UdpWriter(HeartRateSettings settings)
     {
         _settings = settings;
 
-        if (_settings.UDP.IsValid)
+        if (_settings.UDP != null && _settings.UDP.Value.IsValid)
         {
-            _client = new UdpClient(_settings.UDP.Hostname, _settings.UDP.Port);
+            _client = new UdpClient(_settings.UDP.Value.Hostname, _settings.UDP.Value.Port);
         }
     }
 

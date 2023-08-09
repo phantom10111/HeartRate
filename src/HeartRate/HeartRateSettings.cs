@@ -44,46 +44,40 @@ public class HeartRateSettings
     public string LogFile;
     public string IBIFile;
     public string HeartRateFile;
-    public ConnectionInfo UDP;
+    public ConnectionInfo? UDP;
     public ulong? BluetoothAddress;
 
     public HeartRateSettings(string filename)
     {
         _filename = filename;
-    }
-
-    public static HeartRateSettings CreateDefault(string filename)
-    {
-        return new HeartRateSettings(filename) {
-            Version = _settingsVersion,
-            FontName = "Arial",
-            UIFontName = "Arial",
-            UIFontStyle = FontStyle.Regular,
-            UIFontSize = 20,
-            UIFontUseSize = false,
-            UIWindowSizeX = 350,
-            UIWindowSizeY = 250,
-            UITextAlignment = ContentAlignment.MiddleCenter,
-            WarnLevel = 65,
-            AlertLevel = 70,
-            AlertTimeout = TimeSpan.FromMinutes(2),
-            DisconnectedTimeout = TimeSpan.FromSeconds(10),
-            Color = Color.LightBlue,
-            WarnColor = Color.Red,
-            UIColor = Color.DarkBlue,
-            UIWarnColor = Color.Red,
-            UIBackgroundColor = Color.Transparent,
-            UIBackgroundFile = null,
-            UIBackgroundLayout = ImageLayout.Stretch,
-            Sizable = true,
-            LogFormat = "csv",
-            LogDateFormat = DateTimeFormatter.DefaultColumn,
-            LogFile = " ", // Initialize to " " instead of null so the entry is still written.
-            IBIFile = " ",
-            HeartRateFile = " ",
-            UDP = default,
-            BluetoothAddress = default
-        };
+        Version = _settingsVersion;
+        FontName = "Arial";
+        UIFontName = "Arial";
+        UIFontStyle = FontStyle.Regular;
+        UIFontSize = 20;
+        UIFontUseSize = false;
+        UIWindowSizeX = 350;
+        UIWindowSizeY = 250;
+        UITextAlignment = ContentAlignment.MiddleCenter;
+        WarnLevel = 65;
+        AlertLevel = 70;
+        AlertTimeout = TimeSpan.FromMinutes(2);
+        DisconnectedTimeout = TimeSpan.FromSeconds(10);
+        Color = Color.LightBlue;
+        WarnColor = Color.Red;
+        UIColor = Color.DarkBlue;
+        UIWarnColor = Color.Red;
+        UIBackgroundColor = Color.Transparent;
+        UIBackgroundFile = " ";
+        UIBackgroundLayout = ImageLayout.Stretch;
+        Sizable = true;
+        LogFormat = "csv";
+        LogDateFormat = DateTimeFormatter.DefaultColumn;
+        LogFile = " "; // Initialize to " " instead of null so the entry is still written.
+        IBIFile = " ";
+        HeartRateFile = " ";
+        UDP = null;
+        BluetoothAddress = null;
     }
 
     public void Save()
@@ -100,33 +94,33 @@ public class HeartRateSettings
             return;
         }
 
-        FontName = protocol.FontName;
-        UIFontName = protocol.UIFontName;
-        UIFontStyle = EnumOrDefault(protocol.UIFontStyle, FontStyle.Regular);
-        UIFontSize = protocol.UIFontSize ?? 20;
-        UIFontUseSize = protocol.UIFontUseSize;
-        UIWindowSizeX = protocol.UIWindowSizeX;
-        UIWindowSizeY = protocol.UIWindowSizeY;
-        UITextAlignment = EnumOrDefault(protocol.UITextAlignment, ContentAlignment.MiddleCenter);
-        AlertLevel = protocol.AlertLevel;
-        WarnLevel = protocol.WarnLevel;
-        AlertTimeout = TimeSpan.FromMilliseconds(protocol.AlertTimeout);
-        DisconnectedTimeout = TimeSpan.FromMilliseconds(protocol.DisconnectedTimeout);
-        Color = ColorFromString(protocol.Color);
-        WarnColor = ColorFromString(protocol.WarnColor);
-        UIColor = ColorFromString(protocol.UIColor);
-        UIWarnColor = ColorFromString(protocol.UIWarnColor);
-        UIBackgroundColor = ColorFromString(protocol.UIBackgroundColor);
-        UIBackgroundFile = protocol.UIBackgroundFile;
-        UIBackgroundLayout = EnumOrDefault(protocol.UIBackgroundLayout, ImageLayout.Stretch);
-        Sizable = protocol.Sizable;
-        LogFormat = protocol.LogFormat;
-        LogDateFormat = protocol.LogDateFormat;
-        LogFile = protocol.LogFile;
-        IBIFile = protocol.IBIFile;
-        HeartRateFile = protocol.HeartRateFile;
-        UDP = ConnectionInfo.Parse(protocol.UDP);
-        BluetoothAddress = protocol.BluetoothAddress;
+        FontName = protocol.FontName ?? FontName;
+        UIFontName = protocol.UIFontName ?? UIFontName;
+        UIFontStyle = EnumOrDefault(protocol.UIFontStyle, UIFontStyle);
+        UIFontSize = protocol.UIFontSize ?? UIFontSize;
+        UIFontUseSize = protocol.UIFontUseSize ?? UIFontUseSize;
+        UIWindowSizeX = protocol.UIWindowSizeX ?? UIWindowSizeX;
+        UIWindowSizeY = protocol.UIWindowSizeY ?? UIWindowSizeY;
+        UITextAlignment = EnumOrDefault(protocol.UITextAlignment, UITextAlignment);
+        AlertLevel = protocol.AlertLevel ?? AlertLevel;
+        WarnLevel = protocol.WarnLevel ?? WarnLevel;
+        AlertTimeout = protocol.AlertTimeout == null ? AlertTimeout : TimeSpan.FromMilliseconds(protocol.AlertTimeout.Value);
+        DisconnectedTimeout = protocol.DisconnectedTimeout == null ? DisconnectedTimeout : TimeSpan.FromMilliseconds(protocol.DisconnectedTimeout.Value);
+        Color = ColorOrDefault(protocol.Color, Color);
+        WarnColor = ColorOrDefault(protocol.WarnColor, WarnColor);
+        UIColor = ColorOrDefault(protocol.UIColor, UIColor);
+        UIWarnColor = ColorOrDefault(protocol.UIWarnColor, UIWarnColor);
+        UIBackgroundColor = ColorOrDefault(protocol.UIBackgroundColor, UIBackgroundColor);
+        UIBackgroundFile = protocol.UIBackgroundFile ?? UIBackgroundFile;
+        UIBackgroundLayout = EnumOrDefault(protocol.UIBackgroundLayout, UIBackgroundLayout);
+        Sizable = protocol.Sizable ?? Sizable;
+        LogFormat = protocol.LogFormat ?? LogFormat;
+        LogDateFormat = protocol.LogDateFormat ?? LogDateFormat;
+        LogFile = protocol.LogFile ?? LogFile;
+        IBIFile = protocol.IBIFile ?? IBIFile;
+        HeartRateFile = protocol.HeartRateFile ?? HeartRateFile;
+        UDP = ConnectionInfo.Parse(protocol.UDP) ?? UDP;
+        BluetoothAddress = ReadUlong(protocol.BluetoothAddress);
 
         // A hack fix from a bug that's been fixed.
         if (UITextAlignment == 0) UITextAlignment = ContentAlignment.MiddleCenter;
@@ -138,9 +132,10 @@ public class HeartRateSettings
         // if (protocol.Version >= 2) ...
     }
 
-    private static TEnum EnumOrDefault<TEnum>(string input, TEnum defaultValue)
+    private static TEnum EnumOrDefault<TEnum>(string? input, TEnum defaultValue)
         where TEnum : struct
     {
+        if (input == null) return defaultValue;
         return Enum.TryParse<TEnum>(
             input, true, out var parsed)
             ? parsed : defaultValue;
@@ -181,41 +176,49 @@ public class HeartRateSettings
         };
     }
 
-    private static Color ColorFromString(string s)
+    private static Color ColorOrDefault(string? s, Color defaultColor)
     {
-        return Color.FromArgb(Convert.ToInt32(s, 16));
+        if (s == null) return defaultColor;
+        try
+        {
+            return Color.FromArgb(Convert.ToInt32(s, 16));
+        }
+        catch
+        {
+            return defaultColor;
+        }
+    }
+
+    private static ulong? ReadUlong(string? s)
+    {
+        if (ulong.TryParse(s, out var result)) return result;
+        return null;
     }
 
     public static string GetFilename() => _generatedFilename.Value;
 
     private static string GetSettingsDirectory()
     {
-        return Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "runtime");
+        return Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "runtime");
     }
 
     public static string GetSettingsFile(string filename)
     {
-        var appDir = GetSettingsDirectory();
-        if (appDir == null) return null;
-
-        return Path.Combine(appDir, filename);
+        return Path.Combine(GetSettingsDirectory(), filename);
     }
 
     private static string GetFilenameCore()
     {
         var appDir = GetSettingsDirectory();
 
-        // This is bad. Irl error handling is needed.
-        if (appDir == null) return null;
-
         // Arg, do this better.
         try
         {
             Directory.CreateDirectory(appDir);
         }
-        catch
+        catch (Exception e)
         {
-            return null;
+            throw new InvalidOperationException($"Can't create settings directory {appDir}, application won't be able to run. Perhaps it doesn't have appropriate permissions?", e);
         }
 
         return Path.Combine(appDir, "settings.xml");
@@ -229,7 +232,7 @@ public struct ConnectionInfo
 
     public bool IsValid => !string.IsNullOrWhiteSpace(Hostname) && Port > 0;
 
-    public static ConnectionInfo Parse(string connectionString)
+    public static ConnectionInfo? Parse(string? connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString)) return default;
 
@@ -260,34 +263,34 @@ public class HeartRateSettingsProtocol
 
     // Do not remove the setter as it's needed by the serializer.
     // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
-    public int Version { get; set; }
-    public string FontName { get; set; }
-    public string UIFontName { get; set; }
-    public string UIFontStyle { get; set; }
-    public bool UIFontUseSize { get; set; }
+    public int? Version { get; set; }
+    public string? FontName { get; set; }
+    public string? UIFontName { get; set; }
+    public string? UIFontStyle { get; set; }
+    public bool? UIFontUseSize { get; set; }
     public int? UIFontSize { get; set; }
-    public int UIWindowSizeX { get; set; }
-    public int UIWindowSizeY { get; set; }
-    public string UITextAlignment { get; set; }
-    public int AlertLevel { get; set; }
-    public int WarnLevel { get; set; }
-    public int AlertTimeout { get; set; }
-    public int DisconnectedTimeout { get; set; }
-    public string Color { get; set; }
-    public string WarnColor { get; set; }
-    public string UIColor { get; set; }
-    public string UIWarnColor { get; set; }
-    public string UIBackgroundColor { get; set; }
-    public string UIBackgroundFile { get; set; }
-    public string UIBackgroundLayout { get; set; }
-    public bool Sizable { get; set; }
-    public string LogFormat { get; set; }
-    public string LogDateFormat { get; set; }
-    public string LogFile { get; set; }
-    public string IBIFile { get; set; }
-    public string HeartRateFile { get; set; }
-    public string UDP { get; set; }
-    public ulong? BluetoothAddress { get; set; }
+    public int? UIWindowSizeX { get; set; }
+    public int? UIWindowSizeY { get; set; }
+    public string? UITextAlignment { get; set; }
+    public int? AlertLevel { get; set; }
+    public int? WarnLevel { get; set; }
+    public int? AlertTimeout { get; set; }
+    public int? DisconnectedTimeout { get; set; }
+    public string? Color { get; set; }
+    public string? WarnColor { get; set; }
+    public string? UIColor { get; set; }
+    public string? UIWarnColor { get; set; }
+    public string? UIBackgroundColor { get; set; }
+    public string? UIBackgroundFile { get; set; }
+    public string? UIBackgroundLayout { get; set; }
+    public bool? Sizable { get; set; }
+    public string? LogFormat { get; set; }
+    public string? LogDateFormat { get; set; }
+    public string? LogFile { get; set; }
+    public string? IBIFile { get; set; }
+    public string? HeartRateFile { get; set; }
+    public string? UDP { get; set; }
+    public string? BluetoothAddress { get; set; }
     // ReSharper restore AutoPropertyCanBeMadeGetOnly.Global
 
     // Required by deserializer.
@@ -318,12 +321,12 @@ public class HeartRateSettingsProtocol
         UIBackgroundLayout = settings.UIBackgroundLayout.ToString();
         Sizable = settings.Sizable;
         LogFormat = settings.LogFormat;
-        LogDateFormat = settings.LogDateFormat ?? DateTimeFormatter.DefaultColumn;
-        LogFile = settings.LogFile ?? " ";
-        IBIFile = settings.IBIFile ?? " ";
-        HeartRateFile = settings.HeartRateFile ?? " ";
-        UDP = settings.UDP.ToString() ?? " ";
-        BluetoothAddress = settings.BluetoothAddress;
+        LogDateFormat = settings.LogDateFormat;
+        LogFile = settings.LogFile;
+        IBIFile = settings.IBIFile;
+        HeartRateFile = settings.HeartRateFile;
+        UDP = settings.UDP == null ? " " : settings.UDP.ToString();
+        BluetoothAddress = settings.BluetoothAddress == null ? " " : settings.BluetoothAddress.ToString();
     }
 
     private static string ColorToString(Color color)
@@ -331,7 +334,7 @@ public class HeartRateSettingsProtocol
         return color.ToArgb().ToString("X8");
     }
 
-    internal static HeartRateSettingsProtocol Load(string filename)
+    internal static HeartRateSettingsProtocol? Load(string filename)
     {
         DebugLog.WriteLog($"Loading from {filename}");
 

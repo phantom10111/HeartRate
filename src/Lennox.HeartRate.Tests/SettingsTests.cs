@@ -10,7 +10,7 @@ public class SettingsTests
     [TestMethod]
     public void SettingsSaveToFileAsExpected()
     {
-        const string expected = @"<?xml version=""1.0""?>
+        const string expected = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <HeartRateSettingsProtocol xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
   <Version>1</Version>
   <FontName>Arial</FontName>
@@ -30,17 +30,21 @@ public class SettingsTests
   <UIColor>FF00008B</UIColor>
   <UIWarnColor>FFFF0000</UIWarnColor>
   <UIBackgroundColor>00FFFFFF</UIBackgroundColor>
+  <UIBackgroundFile> </UIBackgroundFile>
   <UIBackgroundLayout>Stretch</UIBackgroundLayout>
   <Sizable>true</Sizable>
   <LogFormat>csv</LogFormat>
-  <LogDateFormat>OA</LogDateFormat>
+  <LogDateFormat />
   <LogFile> </LogFile>
   <IBIFile> </IBIFile>
+  <HeartRateFile> </HeartRateFile>
+  <UDP> </UDP>
+  <BluetoothAddress> </BluetoothAddress>
 </HeartRateSettingsProtocol>";
 
         using (var tempFile = new TempFile())
         {
-            var def = HeartRateSettings.CreateDefault(tempFile);
+            var def = new HeartRateSettings(tempFile);
             def.Save();
 
             var actual = File.ReadAllText(tempFile);

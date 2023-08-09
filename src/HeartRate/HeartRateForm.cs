@@ -33,10 +33,10 @@ public partial class HeartRateForm : Form
     private readonly Stopwatch _disconnectedTimeout = new();
     private readonly DateTime _startedAt;
     private readonly HeartRateServiceWatchdog _watchdog;
-    private LogFile _log;
-    private IBIFile _ibi;
-    private UdpWriter _udp;
-    private HeartRateFile _hrfile;
+    private LogFile? _log;
+    private IBIFile? _ibi;
+    private UdpWriter? _udp;
+    private HeartRateFile? _hrfile;
     private HeartRateSettings _lastSettings;
 
     private string _iconText;
@@ -66,7 +66,7 @@ public partial class HeartRateForm : Form
             // `LoadSettingsLocked` is called.
             _startedAt = now;
 
-            _settings = HeartRateSettings.CreateDefault(settingsFilename);
+            _settings = new HeartRateSettings(settingsFilename);
             LoadSettingsLocked();
             _settings.Save();
             _service = service;
@@ -74,6 +74,8 @@ public partial class HeartRateForm : Form
             _iconGraphics = Graphics.FromImage(_iconBitmap);
             _measurementFont = new Font(_settings.FontName, _iconWidth, GraphicsUnit.Pixel);
             _watchdog = new HeartRateServiceWatchdog(TimeSpan.FromSeconds(10), _service, _settings.BluetoothAddress);
+            _lastSettings = _settings.Clone();
+            _iconText = string.Empty;
 
             InitializeComponent();
 
@@ -105,7 +107,7 @@ public partial class HeartRateForm : Form
         DebugLog.WriteLog(e.ExceptionObject.ToString());
     }
 
-    private void HeartRateForm_Load(object sender, EventArgs e)
+    private void HeartRateForm_Load(object? sender, EventArgs e)
     {
         UpdateLabelFont();
         Hide();
@@ -279,8 +281,8 @@ public partial class HeartRateForm : Form
     {
         if (uxBpmLabel.Font.FontFamily.Name != _settings.UIFontName ||
             uxBpmLabel.Font.Style != _settings.UIFontStyle ||
-            _lastSettings?.UIFontUseSize != _settings.UIFontUseSize ||
-            _lastSettings?.UIFontSize != _settings.UIFontSize)
+            _lastSettings.UIFontUseSize != _settings.UIFontUseSize ||
+            _lastSettings.UIFontSize != _settings.UIFontSize)
         {
             UpdateLabelFontLocked();
         }
@@ -302,7 +304,7 @@ public partial class HeartRateForm : Form
             uxBpmLabel.BackColor = _settings.UIBackgroundColor;
         }
 
-        if (_lastSettings?.UIBackgroundFile != _settings.UIBackgroundFile)
+        if (_lastSettings.UIBackgroundFile != _settings.UIBackgroundFile)
         {
             var oldBackgroundImage = uxBpmLabel.BackgroundImage;
             var backgroundFile = _settings.UIBackgroundFile;
@@ -314,7 +316,7 @@ public partial class HeartRateForm : Form
                 {
                     var image = Image.FromFile(backgroundFile);
                     uxBpmLabel.BackgroundImage = image;
-                    oldBackgroundImage.TryDispose();
+                    oldBackgroundImage?.TryDispose();
                 }
                 catch (Exception e)
                 {
@@ -324,7 +326,7 @@ public partial class HeartRateForm : Form
             else
             {
                 uxBpmLabel.BackgroundImage = null;
-                oldBackgroundImage.TryDispose();
+                oldBackgroundImage?.TryDispose();
             }
         }
 
@@ -420,7 +422,7 @@ public partial class HeartRateForm : Form
         _hrfile = new HeartRateFile(FormatFilename(_settings.HeartRateFile));
     }
 
-    private string FormatFilename(string inputFilename)
+    private string? FormatFilename(string inputFilename)
     {
         return string.IsNullOrWhiteSpace(inputFilename)
             ? null
@@ -452,7 +454,7 @@ public partial class HeartRateForm : Form
         removeBackgroundImageToolStripMenuItem.Visible = !string.IsNullOrWhiteSpace(_settings.UIBackgroundFile);
     }
 
-    private static void UpdateEnumSubmenu<TEnum>(TEnum value, ToolStripMenuItem parent)
+    private static void UpdateEnumSubmenu<TEnum>(TEnum value, ToolStripMenuItem parent) where TEnum : Enum
     {
         var stringed = value.ToString();
 
@@ -464,7 +466,7 @@ public partial class HeartRateForm : Form
         }
     }
 
-    private static void CreateEnumSubmenu<TEnum>(ToolStripMenuItem parent, EventHandler click)
+    private static void CreateEnumSubmenu<TEnum>(ToolStripMenuItem parent, EventHandler click) where TEnum : Enum
     {
         foreach (var align in Enum.GetNames(typeof(TEnum)))
         {
@@ -478,10 +480,10 @@ public partial class HeartRateForm : Form
         }
     }
 
-    private static TEnum EnumFromMenuItemTag<TEnum>(object sender)
+    private static TEnum? EnumFromMenuItemTag<TEnum>(ToolStripMenuItem menuItem) where TEnum : struct, Enum
     {
-        var menuItem = (ToolStripMenuItem)sender;
-        return (TEnum)Enum.Parse(typeof(TEnum), menuItem.Tag.ToString());
+        if (!Enum.TryParse(typeof(TEnum), menuItem.Tag.ToString(), out var result)) return null;
+        return (TEnum?)result;
     }
 
     private void UpdateSaveFileSetting(ref string target, string filetypes)
@@ -513,7 +515,7 @@ public partial class HeartRateForm : Form
     }
 
     #region UI events
-    private void uxBpmNotifyIcon_MouseClick(object sender, MouseEventArgs e)
+    private void uxBpmNotifyIcon_MouseClick(object? sender, MouseEventArgs e)
     {
         if (e.Button == MouseButtons.Left)
         {
@@ -522,7 +524,7 @@ public partial class HeartRateForm : Form
         }
     }
 
-    private void HeartRateForm_FormClosing(object sender, FormClosingEventArgs e)
+    private void HeartRateForm_FormClosing(object? sender, FormClosingEventArgs e)
     {
         if (e.CloseReason == CloseReason.UserClosing)
         {
@@ -531,7 +533,7 @@ public partial class HeartRateForm : Form
         }
     }
 
-    private void HeartRateForm_ResizeEnd(object sender, EventArgs e)
+    private void HeartRateForm_ResizeEnd(object? sender, EventArgs e)
     {
         lock (_updateSync)
         {
@@ -544,7 +546,7 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void uxMenuEditSettings_Click(object sender, EventArgs e)
+    private void uxMenuEditSettings_Click(object? sender, EventArgs e)
     {
         var thread = new Thread(() => {
             using (var process = Process.Start(new ProcessStartInfo
@@ -554,7 +556,7 @@ public partial class HeartRateForm : Form
                        Verb = "EDIT"
                    }))
             {
-                process.WaitForExit();
+                process?.WaitForExit();
             }
 
             lock (_updateSync)
@@ -570,19 +572,19 @@ public partial class HeartRateForm : Form
         thread.Start();
     }
 
-    private void uxExitMenuItem_Click(object sender, EventArgs e) => Environment.Exit(0);
-    private void editFontColorToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSettingColor(ref _settings.Color);
-    private void editIconFontWarningColorToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSettingColor(ref _settings.WarnColor);
-    private void editWindowFontColorToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSettingColor(ref _settings.UIColor);
-    private void editWindowFontWarningColorToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSettingColor(ref _settings.UIWarnColor);
-    private void setCSVOutputFileToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSaveFileSetting(ref _settings.LogFile, "CSV Files|*.csv|All files (*.*)|*.*");
-    private void unsetCSVOutputFileToolStripMenuItem_Click(object sender, EventArgs e) => UnsetFileSetting(ref _settings.LogFile);
-    private void setHeartRateFileToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSaveFileSetting(ref _settings.HeartRateFile, "Text Files|*.txt|All files (*.*)|*.*");
-    private void unsetHeartRateFileToolStripMenuItem_Click(object sender, EventArgs e) => UnsetFileSetting(ref _settings.HeartRateFile);
-    private void setIBIFileToolStripMenuItem_Click(object sender, EventArgs e) => UpdateSaveFileSetting(ref _settings.IBIFile, "Text Files|*.txt|All files (*.*)|*.*");
-    private void unsetIBIFileToolStripMenuItem_Click(object sender, EventArgs e) => UnsetFileSetting(ref _settings.IBIFile);
+    private void uxExitMenuItem_Click(object? sender, EventArgs e) => Environment.Exit(0);
+    private void editFontColorToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSettingColor(ref _settings.Color);
+    private void editIconFontWarningColorToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSettingColor(ref _settings.WarnColor);
+    private void editWindowFontColorToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSettingColor(ref _settings.UIColor);
+    private void editWindowFontWarningColorToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSettingColor(ref _settings.UIWarnColor);
+    private void setCSVOutputFileToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSaveFileSetting(ref _settings.LogFile, "CSV Files|*.csv|All files (*.*)|*.*");
+    private void unsetCSVOutputFileToolStripMenuItem_Click(object? sender, EventArgs e) => UnsetFileSetting(ref _settings.LogFile);
+    private void setHeartRateFileToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSaveFileSetting(ref _settings.HeartRateFile, "Text Files|*.txt|All files (*.*)|*.*");
+    private void unsetHeartRateFileToolStripMenuItem_Click(object? sender, EventArgs e) => UnsetFileSetting(ref _settings.HeartRateFile);
+    private void setIBIFileToolStripMenuItem_Click(object? sender, EventArgs e) => UpdateSaveFileSetting(ref _settings.IBIFile, "Text Files|*.txt|All files (*.*)|*.*");
+    private void unsetIBIFileToolStripMenuItem_Click(object? sender, EventArgs e) => UnsetFileSetting(ref _settings.IBIFile);
 
-    private void selectIconFontToolStripMenuItem_Click(object sender, EventArgs e)
+    private void selectIconFontToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         if (!Prompt.TryFont(_settings.FontName, default, 10, out var font)) return;
 
@@ -595,7 +597,7 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void selectWindowFontToolStripMenuItem_Click(object sender, EventArgs e)
+    private void selectWindowFontToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         if (!Prompt.TryFont(_settings.UIFontName, _settings.UIFontStyle, _settings.UIFontSize, out var font)) return;
 
@@ -610,7 +612,7 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void selectBackgroundImageToolStripMenuItem_Click(object sender, EventArgs e)
+    private void selectBackgroundImageToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         if (!Prompt.TryFile(_settings.UIBackgroundFile, "Image files|*.bmp;*.gif;*.jpeg;*.png;*.tiff|All files (*.*)|*.*", out var file)) return;
 
@@ -624,11 +626,11 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void removeBackgroundImageToolStripMenuItem_Click(object sender, EventArgs e)
+    private void removeBackgroundImageToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         lock (_updateSync)
         {
-            _settings.UIBackgroundFile = null;
+            _settings.UIBackgroundFile = " ";
             _settings.Save();
         }
 
@@ -636,13 +638,17 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void backgroundImagePositionToolStripMenuItemItem_Click(object sender, EventArgs e)
+    private void backgroundImagePositionToolStripMenuItemItem_Click(object? sender, EventArgs e)
     {
-        var layout = EnumFromMenuItemTag<ImageLayout>(sender);
+        var menuItem = sender as ToolStripMenuItem;
+        if (menuItem == null) return;
+
+        var layout = EnumFromMenuItemTag<ImageLayout>(menuItem);
+        if (layout == null) return;
 
         lock (_updateSync)
         {
-            _settings.UIBackgroundLayout = layout;
+            _settings.UIBackgroundLayout = layout.Value;
             _settings.Save();
         }
 
@@ -650,13 +656,17 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void textAlignmentToolStripMenuItemItem_Click(object sender, EventArgs e)
+    private void textAlignmentToolStripMenuItemItem_Click(object? sender, EventArgs e)
     {
-        var alignment = EnumFromMenuItemTag<ContentAlignment>(sender);
+        var menuItem = sender as ToolStripMenuItem;
+        if (menuItem == null) return;
+
+        var alignment = EnumFromMenuItemTag<ContentAlignment>(menuItem);
+        if (alignment == null) return;
 
         lock (_updateSync)
         {
-            _settings.UITextAlignment = alignment;
+            _settings.UITextAlignment = alignment.Value;
             _settings.Save();
         }
 
@@ -664,7 +674,7 @@ public partial class HeartRateForm : Form
         UpdateUI();
     }
 
-    private void doNotScaleFontToolStripMenuItem_Click(object sender, EventArgs e)
+    private void doNotScaleFontToolStripMenuItem_Click(object? sender, EventArgs e)
     {
         lock (_settings)
         {

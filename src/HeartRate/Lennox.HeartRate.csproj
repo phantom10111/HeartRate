@@ -5,6 +5,7 @@
     <RootNamespace>HeartRate</RootNamespace>
     <AssemblyName>HeartRate</AssemblyName>
     <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <UseWindowsForms>true</UseWindowsForms>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>

@@ -14,12 +14,12 @@ internal class DebugLog
         _name = name;
     }
 
-    public void Write(string s)
+    public void Write(string? s)
     {
         WriteLog($"{_name}: {s}");
     }
 
-    private static FileStream _fs = null;
+    private static FileStream? _fs;
 
     public static void Initialize(string filename)
     {
@@ -31,8 +31,9 @@ internal class DebugLog
         return $"{DateTime.Now}: {s}\n";
     }
 
-    public static void WriteLog(string s)
+    public static void WriteLog(string? s)
     {
+        if (s == null) return;
         Debug.WriteLine(s);
 
         if (_fs != null)
