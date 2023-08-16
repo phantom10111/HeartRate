@@ -56,7 +56,11 @@ internal class HeartRateServiceWatchdog : IDisposable
                 try
                 {
                     _service.InitiateDefault(_bluetoothAddress);
-                    _lastUpdateTimer.Restart();
+
+                    lock (_sync)
+                    {
+                        _lastUpdateTimer.Restart();
+                    }
                 }
                 catch (Exception e)
                 {

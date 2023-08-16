@@ -8,7 +8,7 @@ public class HeartRateServiceTests
 {
     private static HeartRateReading? GetReading(params byte[] buf)
     {
-        return HeartRateService.ReadBuffer(buf, buf.Length);
+        return HeartRateService.ReadBuffer(buf, (uint)buf.Length);
     }
 
     private static int GetBpm(params byte[] buf) => GetReading(buf)?.BeatsPerMinute ?? -1;

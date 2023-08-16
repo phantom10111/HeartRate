@@ -221,7 +221,7 @@ internal class HeartRateService : IHeartRateService
         var byteBuffer = Interlocked.Exchange(ref _buffer, null)
             ?? new byte[buffer.Length];
 
-        if (byteBuffer.Length < buffer.Length)
+        if (byteBuffer.Length != buffer.Length)
         {
             byteBuffer = new byte[buffer.Length];
         }
@@ -231,7 +231,7 @@ internal class HeartRateService : IHeartRateService
             using var reader = DataReader.FromBuffer(buffer);
             reader.ReadBytes(byteBuffer);
 
-            var readingValue = ReadBuffer(byteBuffer, (int)buffer.Length);
+            var readingValue = ReadBuffer(byteBuffer, buffer.Length);
 
             if (readingValue == null)
             {
@@ -247,19 +247,19 @@ internal class HeartRateService : IHeartRateService
         }
     }
 
-    internal static HeartRateReading? ReadBuffer(byte[] buffer, int length)
+    internal static HeartRateReading? ReadBuffer(byte[] buffer, uint length)
     {
         if (length == 0) return null;
 
-        var ms = new MemoryStream(buffer, 0, length);
+        var ms = new MemoryStream(buffer, 0, (int)length);
         var flags = (HeartRateFlags)ms.ReadByte();
         var isshort = flags.HasFlag(HeartRateFlags.IsShort);
         var contactSensor = (ContactSensorStatus)(((int)flags >> 1) & 3);
         var hasEnergyExpended = flags.HasFlag(HeartRateFlags.HasEnergyExpended);
         var hasRRInterval = flags.HasFlag(HeartRateFlags.HasRRInterval);
-        var minLength = isshort ? 3 : 2;
 
-        if (buffer.Length < minLength) return null;
+        var minLength = isshort ? 3u : 2u;
+        if (length < minLength) return null;
 
         var reading = new HeartRateReading
         {
@@ -270,12 +270,15 @@ internal class HeartRateService : IHeartRateService
 
         if (hasEnergyExpended)
         {
+            minLength += 2u;
+            if (length < minLength) return null;
+
             reading.EnergyExpended = ms.ReadUInt16();
         }
 
         if (hasRRInterval)
         {
-            var rrvalueCount = (buffer.Length - ms.Position) / sizeof(ushort);
+            var rrvalueCount = (length - ms.Position) / sizeof(ushort);
             var rrvalues = new int[rrvalueCount];
             for (var i = 0; i < rrvalueCount; ++i)
             {
